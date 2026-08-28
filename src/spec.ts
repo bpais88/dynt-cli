@@ -14,7 +14,7 @@ export interface Spec { name: string; version: string; hash: string; instruction
 
 export const DEFAULT_ENVIRONMENTS = {
   production: { api: "https://api.dynt.ai", app: "https://app.dynt.ai", auth: "https://hlovaeepcjkqjjejnzuy.supabase.co/auth/v1" },
-  sandbox: { api: "https://api.dynt.ai", app: "https://app.dynt.ai", auth: "https://hlovaeepcjkqjjejnzuy.supabase.co/auth/v1" },
+  sandbox: { api: "https://dynt-server-sandbox.onrender.com", app: "https://dynt-app-sandbox.onrender.com", auth: "https://cwdtwneqsbzlknktolav.supabase.co/auth/v1" },
 } as const;
 export type EnvName = keyof typeof DEFAULT_ENVIRONMENTS;
 
