@@ -1,0 +1,26 @@
+{
+  "name": "dynt-cli",
+  "version": "0.1.0",
+  "description": "Dynt from the terminal, for people and agents: every MCP tool as a command, generated from the live tool catalogue",
+  "license": "MIT",
+  "type": "module",
+  "bin": { "dynt": "./dist/index.js" },
+  "files": ["dist"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "npm run build",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}
