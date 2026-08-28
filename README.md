@@ -20,9 +20,9 @@ Headless / CI: `DYNT_API_KEY=dynt_… dynt transactions summary --agent` (keys f
 ## Set up your coding agent
 
 ```bash
-dynt mcp --agent claude-code --agent cursor      # writes MCP config; OAuth sign-in on first use
-dynt mcp --agent codex --api-key dynt_…          # or a key for headless agents
-dynt plugins --agent claude-code -y              # skills + MCP in one package (Claude Code, Codex)
+dynt mcp --for claude-code cursor                # writes MCP config; OAuth sign-in on first use
+dynt mcp --for codex --api-key dynt_…            # or a key for headless agents
+dynt plugins --for claude-code -y                # skills + MCP in one package (Claude Code, Codex)
 dynt skills install                              # just the skills, into ./.claude/skills or your agent's dir
 ```
 

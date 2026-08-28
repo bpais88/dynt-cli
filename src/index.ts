@@ -116,8 +116,8 @@ tools.command("list").description("List every tool with its resource, command an
 }));
 tools.command("refresh").description("Re-download the tool catalogue").action(() => run(async () => { const s = await loadSpec(true); return { hash: s.hash, tools: s.tools.length }; }));
 const skills = program.command("skills").description("Browse and install agent skill instructions");
-skills.command("install [names...]").description("Install Dynt skills for your coding agent (all by default)").option("--agent-name <agent>", "Target agent (claude-code, cursor, codex, …)").action((names: string[], o: { agentName?: string }) => {
-  const args = ["-y", "skills", "add", "bpais88/dynt-agent-skills", ...names.flatMap((n) => ["--skill", n]), ...(o.agentName ? ["--agent", o.agentName] : []), "-y"];
+skills.command("install [names...]").description("Install Dynt skills for your coding agent (all by default)").option("--for <agent>", "Target agent (claude-code, cursor, codex, …)").action((names: string[], o: { for?: string }) => {
+  const args = ["-y", "skills", "add", "bpais88/dynt-agent-skills", ...names.flatMap((n) => ["--skill", n]), ...(o.for ? ["--agent", o.for] : []), "-y"];
   const r = spawnSync("npx", args, { stdio: "inherit" }); process.exit(r.status ?? 1);
 });
 skills.command("list").description("List available Dynt skills").action(() => run(async () => {
@@ -132,11 +132,11 @@ function writeMerged(path: string, merge: (existing: string) => string) {
   return path;
 }
 program.command("mcp").description("Install the Dynt MCP server into your coding agents (OAuth by default)")
-  .addOption(new Option("--agent <agent...>", "Target agent(s)").choices(AGENTS))
+  .addOption(new Option("--for <agent...>", "Target agent(s)").choices(AGENTS))
   .option("--api-key <key>", "Use a dynt_ API key instead of OAuth sign-in on first use")
   .option("--project", "Write project-scoped config (current directory) instead of user-scoped")
-  .action((o: { agent?: AgentName[]; apiKey?: string; project?: boolean }) => run(async () => {
-    const agents = o.agent?.length ? o.agent : (["claude-code"] as AgentName[]);
+  .action((o: { for?: AgentName[]; apiKey?: string; project?: boolean }) => run(async () => {
+    const agents = o.for?.length ? o.for : (["claude-code"] as AgentName[]);
     const home = homedir(); const cwd = process.cwd();
     const written: { agent: string; path: string; mode: string }[] = [];
     const mode = o.apiKey ? "api-key" : "oauth (sign in on first use)";
@@ -159,10 +159,10 @@ program.command("mcp").description("Install the Dynt MCP server into your coding
     return written;
   }));
 program.command("plugins").description("Install the Dynt plugin (skills + MCP) into agents with plugin marketplaces")
-  .addOption(new Option("--agent <agent...>", "Target agent(s)").choices(["claude-code", "cursor", "codex"]))
+  .addOption(new Option("--for <agent...>", "Target agent(s)").choices(["claude-code", "cursor", "codex"]))
   .option("-y, --yes", "No prompts")
-  .action((o: { agent?: string[]; yes?: boolean }) => run(async () => {
-    const agents = o.agent?.length ? o.agent : ["claude-code"];
+  .action((o: { for?: string[]; yes?: boolean }) => run(async () => {
+    const agents = o.for?.length ? o.for : ["claude-code"];
     const out: { agent: string; command: string; status: string }[] = [];
     for (const a of agents) {
       if (a === "claude-code") {
