@@ -1,12 +1,18 @@
 {
-  "name": "dynt-cli",
+  "name": "dynt",
   "version": "0.1.0",
   "description": "Dynt from the terminal, for people and agents: every MCP tool as a command, generated from the live tool catalogue",
   "license": "MIT",
   "type": "module",
-  "bin": { "dynt": "./dist/index.js" },
-  "files": ["dist"],
-  "engines": { "node": ">=20" },
+  "bin": {
+    "dynt": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "prepare": "npm run build",
@@ -22,5 +28,20 @@
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vitest": "^2.1.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bpais88/dynt-cli"
+  },
+  "homepage": "https://dynt.ai",
+  "keywords": [
+    "dynt",
+    "finance",
+    "fintech",
+    "mcp",
+    "agent",
+    "cli",
+    "accounting",
+    "banking"
+  ]
 }
