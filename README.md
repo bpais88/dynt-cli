@@ -10,7 +10,7 @@ dynt <resource> <tool> [options]   e.g. dynt transactions list --startDate 2026-
 ## Install
 
 ```bash
-npm i -g dynt            # or: npx dynt <command>
+npm i -g dynt-cli        # installs the `dynt` command · or: npx dynt-cli <command>
 dynt auth login                      # opens the browser: sign in, pick organization + permissions
 dynt whoami
 ```

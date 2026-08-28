@@ -1,5 +1,5 @@
 {
-  "name": "dynt",
+  "name": "dynt-cli",
   "version": "0.1.0",
   "description": "Dynt from the terminal, for people and agents: every MCP tool as a command, generated from the live tool catalogue",
   "license": "MIT",
