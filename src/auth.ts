@@ -9,7 +9,12 @@ import { readCredentials, writeCredentials } from "./config.js";
 import { isExpired, pkcePair, b64url } from "./pkce.js";
 import { randomBytes } from "node:crypto";
 
-export const CLIENT_ID = process.env.DYNT_OAUTH_CLIENT_ID || "799c0f91-5c69-43ef-95eb-cd6511086c08";
+/** Public (PKCE) client ids registered per environment; override with DYNT_OAUTH_CLIENT_ID. */
+const CLIENT_IDS: Record<EnvName, string> = {
+  production: "799c0f91-5c69-43ef-95eb-cd6511086c08",
+  sandbox: "c61e2cb8-1730-472d-ae25-bc7a80365c5b",
+};
+export const clientId = (env: EnvName) => process.env.DYNT_OAUTH_CLIENT_ID || CLIENT_IDS[env];
 const PORT = 19817;
 const REDIRECT = `http://127.0.0.1:${PORT}/callback`;
 const SCOPE = "email profile"; // never "openid": Dynt's auth server has no ID-token signing key
@@ -19,7 +24,7 @@ type Tokens = { access_token: string; refresh_token?: string; expires_in?: numbe
 async function tokenRequest(env: EnvName, params: Record<string, string>): Promise<Tokens> {
   const res = await fetch(`${DEFAULT_ENVIRONMENTS[env].auth}/oauth/token`, {
     method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ client_id: CLIENT_ID, ...params }).toString(), signal: AbortSignal.timeout(20000),
+    body: new URLSearchParams({ client_id: clientId(env), ...params }).toString(), signal: AbortSignal.timeout(20000),
   });
   const body = (await res.json().catch(() => ({}))) as Tokens;
   if (!res.ok || !body.access_token) throw new Error(body.error_description || body.msg || body.error || `token endpoint HTTP ${res.status}`);
@@ -32,7 +37,7 @@ function subjectOf(token: string): string | undefined {
 
 export function buildAuthorizeUrl(env: EnvName, challenge: string, state: string): string {
   const u = new URL(`${DEFAULT_ENVIRONMENTS[env].auth}/oauth/authorize`);
-  u.searchParams.set("response_type", "code"); u.searchParams.set("client_id", CLIENT_ID);
+  u.searchParams.set("response_type", "code"); u.searchParams.set("client_id", clientId(env));
   u.searchParams.set("redirect_uri", REDIRECT); u.searchParams.set("code_challenge", challenge);
   u.searchParams.set("code_challenge_method", "S256"); u.searchParams.set("scope", SCOPE); u.searchParams.set("state", state);
   return u.toString();
