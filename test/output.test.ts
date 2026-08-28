@@ -25,3 +25,18 @@ describe("output", () => {
     expect(renderTable([])).toBe("(no rows)");
   });
 });
+
+describe("output — unwrapping and flattening", () => {
+  it("unwraps a single-array result object into rows and keeps the rest as meta", () => {
+    const e = toEnvelope({ accounts: [{ id: "a", balance: 1 }], total: 1 });
+    expect(e.data).toEqual([{ id: "a", balance: 1 }]);
+    expect(e.meta).toEqual({ total: 1 });
+    expect(e.pagination).toBeNull();
+  });
+  it("flattens nested objects in a single-row table", () => {
+    const t = renderTable({ totalTransactions: 300, income: { total: 10.5, count: 2 }, expenses: { total: 20, count: 3 } });
+    expect(t).toContain("income.total");
+    expect(t).toContain("10.50");
+    expect(t).not.toContain("{…}");
+  });
+});

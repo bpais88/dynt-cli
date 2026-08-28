@@ -14,6 +14,10 @@ import { AuthRequired, bearer, login, logout, status } from "./auth.js";
 import { McpAuthError, McpClient, ToolError } from "./mcp.js";
 import { errorEnvelope, renderTable, resolveFormat, toEnvelope } from "./output.js";
 import { cliTools, coerceArguments, DEFAULT_ENVIRONMENTS, optionsFor, type EnvName, type Spec, type SpecTool } from "./spec.js";
+import { AGENTS, mergeCodexToml, mergeJsonMcpConfig, type AgentName } from "./setup.js";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
 const VERSION = "0.1.0";
 const SPEC_TTL_MS = 60 * 60 * 1000;
@@ -120,6 +124,60 @@ skills.command("list").description("List available Dynt skills").action(() => ru
   const r = await fetch("https://api.github.com/repos/bpais88/dynt-agent-skills/contents/skills", { headers: { "user-agent": "dynt-cli" } });
   return ((await r.json()) as { name: string }[]).map((e) => ({ skill: e.name, install: `dynt skills install ${e.name}` }));
 }));
+// ─── setup for coding agents (dynt mcp / dynt plugins / dynt skills) ──
+function writeMerged(path: string, merge: (existing: string) => string) {
+  mkdirSync(join(path, ".."), { recursive: true });
+  const existing = existsSync(path) ? readFileSync(path, "utf8") : "";
+  writeFileSync(path, merge(existing));
+  return path;
+}
+program.command("mcp").description("Install the Dynt MCP server into your coding agents (OAuth by default)")
+  .addOption(new Option("--agent <agent...>", "Target agent(s)").choices(AGENTS))
+  .option("--api-key <key>", "Use a dynt_ API key instead of OAuth sign-in on first use")
+  .option("--project", "Write project-scoped config (current directory) instead of user-scoped")
+  .action((o: { agent?: AgentName[]; apiKey?: string; project?: boolean }) => run(async () => {
+    const agents = o.agent?.length ? o.agent : (["claude-code"] as AgentName[]);
+    const home = homedir(); const cwd = process.cwd();
+    const written: { agent: string; path: string; mode: string }[] = [];
+    const mode = o.apiKey ? "api-key" : "oauth (sign in on first use)";
+    for (const a of agents) {
+      if (a === "claude-code") {
+        const args = ["mcp", "add", "--transport", "http", ...(o.project ? ["--scope", "project"] : ["--scope", "user"]), ...(o.apiKey ? ["--header", `Authorization: Bearer ${o.apiKey}`] : []), "dynt", "https://api.dynt.ai/mcp"];
+        const r = spawnSync("claude", args, { stdio: g().quiet ? "ignore" : "inherit" });
+        if (r.error || r.status) throw new Error("`claude` CLI not found or failed; install Claude Code, or run: claude " + args.join(" "));
+        written.push({ agent: a, path: "claude mcp add", mode });
+      } else if (a === "cursor") {
+        written.push({ agent: a, path: writeMerged(o.project ? join(cwd, ".cursor", "mcp.json") : join(home, ".cursor", "mcp.json"), (e) => JSON.stringify(mergeJsonMcpConfig(e, "http", o.apiKey), null, 2) + "\n"), mode });
+      } else if (a === "vscode") {
+        written.push({ agent: a, path: writeMerged(join(cwd, ".vscode", "mcp.json"), (e) => JSON.stringify(mergeJsonMcpConfig(e, "http", o.apiKey), null, 2) + "\n"), mode });
+      } else if (a === "windsurf") {
+        written.push({ agent: a, path: writeMerged(join(home, ".codeium", "windsurf", "mcp_config.json"), (e) => JSON.stringify(mergeJsonMcpConfig(e, "streamable-http", o.apiKey), null, 2) + "\n"), mode });
+      } else if (a === "codex") {
+        written.push({ agent: a, path: writeMerged(join(home, ".codex", "config.toml"), (e) => mergeCodexToml(e, o.apiKey)), mode: o.apiKey ? "api-key via DYNT_API_KEY env" : mode });
+      }
+    }
+    return written;
+  }));
+program.command("plugins").description("Install the Dynt plugin (skills + MCP) into agents with plugin marketplaces")
+  .addOption(new Option("--agent <agent...>", "Target agent(s)").choices(["claude-code", "cursor", "codex"]))
+  .option("-y, --yes", "No prompts")
+  .action((o: { agent?: string[]; yes?: boolean }) => run(async () => {
+    const agents = o.agent?.length ? o.agent : ["claude-code"];
+    const out: { agent: string; command: string; status: string }[] = [];
+    for (const a of agents) {
+      if (a === "claude-code") {
+        const add = spawnSync("claude", ["plugin", "marketplace", "add", "bpais88/dynt-agent-skills"], { stdio: g().quiet ? "ignore" : "inherit" });
+        const inst = spawnSync("claude", ["plugin", "install", "dynt@dynt"], { stdio: g().quiet ? "ignore" : "inherit" });
+        out.push({ agent: a, command: "claude plugin install dynt@dynt", status: add.error || inst.error || inst.status ? "failed — is Claude Code installed?" : "installed" });
+      } else if (a === "codex") {
+        const r = spawnSync("codex", ["plugin", "add", "bpais88/dynt-agent-skills"], { stdio: g().quiet ? "ignore" : "inherit" });
+        out.push({ agent: a, command: "codex plugin add bpais88/dynt-agent-skills", status: r.error || r.status ? "failed — is Codex CLI installed?" : "installed" });
+      } else {
+        out.push({ agent: a, command: "/add-plugin dynt (after adding bpais88/dynt-agent-skills as a marketplace in Cursor)", status: "manual" });
+      }
+    }
+    return out;
+  }));
 program.command("whoami").description("Show the identity behind the current credential").action(() => run(async () => (await client()).call("get_current_user", {})));
 
 // ─── generated resource commands ──────────────────────────────────────

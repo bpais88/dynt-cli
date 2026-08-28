@@ -17,6 +17,15 @@ dynt whoami
 
 Headless / CI: `DYNT_API_KEY=dynt_… dynt transactions summary --agent` (keys from Organization → API keys).
 
+## Set up your coding agent
+
+```bash
+dynt mcp --agent claude-code --agent cursor      # writes MCP config; OAuth sign-in on first use
+dynt mcp --agent codex --api-key dynt_…          # or a key for headless agents
+dynt plugins --agent claude-code -y              # skills + MCP in one package (Claude Code, Codex)
+dynt skills install                              # just the skills, into ./.claude/skills or your agent's dir
+```
+
 ## For agents
 
 - `--agent` (or any pipe) prints a stable envelope: `{"schema_version":"1.0","data":…,"pagination":{"nextCursor","hasMore"}|null}`; errors are `{"error":{"code","message"}}` with exit codes `2` auth, `3` tool error, `4` cancelled.

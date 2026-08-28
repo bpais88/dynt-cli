@@ -1,16 +1,22 @@
 /** Agent-facing JSON envelope and human tables. */
-export interface Envelope { schema_version: "1.0"; data: unknown; pagination: { nextCursor: unknown; hasMore: boolean } | null }
+export interface Envelope { schema_version: "1.0"; data: unknown; meta?: Record<string, unknown>; pagination: { nextCursor: unknown; hasMore: boolean } | null }
 export interface ErrorEnvelope { schema_version: "1.0"; error: { code: string; message: string }; data: []; pagination: null }
 
 /** Lift a tool result into the envelope; list-shaped results expose pagination. */
 export function toEnvelope(result: unknown): Envelope {
   if (result && typeof result === "object" && !Array.isArray(result)) {
     const r = result as Record<string, unknown>;
-    if ("hasMore" in r || "nextCursor" in r) {
-      const { hasMore, nextCursor, ...rest } = r;
-      const listKey = Object.keys(rest).find((k) => Array.isArray(rest[k]));
-      return { schema_version: "1.0", data: listKey ? (rest[listKey] as unknown[]) : rest, pagination: { nextCursor: nextCursor ?? null, hasMore: Boolean(hasMore) } };
+    const { hasMore, nextCursor, ...rest } = r;
+    const paginated = "hasMore" in r || "nextCursor" in r;
+    const arrayKeys = Object.keys(rest).filter((k) => Array.isArray(rest[k]));
+    // `{ accounts: [...], total: n }` → rows + meta; anything else stays as-is.
+    if (arrayKeys.length === 1) {
+      const [listKey] = arrayKeys;
+      const { [listKey]: rows, ...meta } = rest;
+      return { schema_version: "1.0", data: rows, ...(Object.keys(meta).length ? { meta } : {}),
+        pagination: paginated ? { nextCursor: nextCursor ?? null, hasMore: Boolean(hasMore) } : null };
     }
+    if (paginated) return { schema_version: "1.0", data: rest, pagination: { nextCursor: nextCursor ?? null, hasMore: Boolean(hasMore) } };
   }
   return { schema_version: "1.0", data: result, pagination: null };
 }
@@ -29,8 +35,15 @@ export function resolveFormat(opts: { agent?: boolean; human?: boolean; output?:
 const money = (n: number) => n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** Render rows as a fixed-width table; objects/arrays are summarised unless wide. */
+const flatten = (o: Record<string, unknown>, prefix = ""): Record<string, unknown> =>
+  Object.entries(o).reduce((acc, [k, v]) => {
+    if (v && typeof v === "object" && !Array.isArray(v)) Object.assign(acc, flatten(v as Record<string, unknown>, `${prefix}${k}.`));
+    else acc[`${prefix}${k}`] = v;
+    return acc;
+  }, {} as Record<string, unknown>);
+
 export function renderTable(data: unknown, wide = false): string {
-  const rows = Array.isArray(data) ? data : data && typeof data === "object" ? [data] : [{ value: data }];
+  const rows = Array.isArray(data) ? data : data && typeof data === "object" ? [flatten(data as Record<string, unknown>)] : [{ value: data }];
   if (!rows.length) return "(no rows)";
   const cols = [...new Set(rows.flatMap((r) => Object.keys(r as object)))].filter((c) => wide || !/^(id|createdAt|updatedAt)$/.test(c) || rows.length === 1);
   const cell = (v: unknown): string => {
